@@ -25,8 +25,14 @@ setup(
     ],
     keywords="configuration",
     install_requires=[
-        'setuptools'
+        'setuptools',
+        'aiohttp',
     ],
+    entry_points={
+        'console_scripts': [
+            'proxima = proxima.proxy:main',
+        ]
+    },
     extras_require=dict(
         test=[
             'pytest >= 2.5.2',

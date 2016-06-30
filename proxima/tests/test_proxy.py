@@ -105,3 +105,13 @@ async def test_proxy_post(test_client):
     assert resp.status == 200
     text = await resp.text()
     assert text == 'got: DATA'
+
+
+# test when server errors
+
+# test when server redirects
+
+# Forwarded header
+
+# encoding, how does it work? I think it is used to encode the
+# data if it's a string, but ours is an IOBase I suspect

@@ -20,6 +20,7 @@ class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
             url=self.make_url(message.path),
             headers=message.headers,
             data=payload.read(),
+            version=message.version,
             allow_redirects=False)
         response = aiohttp.Response(
             self.writer, client_response.status)

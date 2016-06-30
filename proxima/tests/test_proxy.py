@@ -8,6 +8,29 @@ import aiohttp
 from aiohttp import HttpVersion11, StreamReader
 from unittest import mock
 
+class MockClientSession:
+    def __init__(self, loop):
+        self.loop = loop
+
+    async def request(self, method, url, *,
+                params=None,
+                data=None,
+                headers=None,
+                skip_auto_headers=None,
+                auth=None,
+                allow_redirects=True,
+                max_redirects=10,
+                encoding='utf-8',
+                version=None,
+                compress=None,
+                chunked=None,
+                expect100=False,
+                read_until_eof=True):
+        if url == 'http://localhost/':
+            return MockClientGetResponse(self.loop)
+        elif url == 'http://localhost/post':
+            return MockClientPostResponse(self.loop, data)
+
 
 class MockClientGetResponse:
     def __init__(self, loop):
@@ -33,29 +56,6 @@ class MockClientPostResponse:
         pass
 
 
-class MockRequester:
-    def __init__(self, loop):
-        self.loop = loop
-
-    async def request(self, message, payload):
-        if message.path == '/':
-            return MockClientGetResponse(self.loop)
-        elif message.path == '/post':
-            data = await payload.read()
-            return MockClientPostResponse(self.loop, data)
-
-class MockMessage:
-    def __init__(self, path, method):
-        self.path = path
-        self.method = method
-        self.version = HttpVersion11
-
-
-class MockPayload:
-    def __init__(self):
-        pass
-
-
 @pytest.yield_fixture
 def loop():
     with loop_context() as loop:
@@ -64,8 +64,9 @@ def loop():
 
 @pytest.fixture
 def handler(loop):
-    requester = MockRequester(loop)
-    return ProxyRequestHandler(requester, loop=loop, debug=True)
+    client_session = MockClientSession(loop)
+    return ProxyRequestHandler('http://localhost',
+                               client_session, loop=loop)
 
 
 @pytest.yield_fixture

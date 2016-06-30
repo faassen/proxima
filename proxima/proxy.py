@@ -5,27 +5,23 @@ import asyncio
 from functools import partial
 
 
-class ProxyRequester:
-    def __init__(self, base_url):
+class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
+    def __init__(self, base_url, client_session, *args, **kw):
+        super().__init__(*args, **kw)
         self.base_url = base_url
-        self.client = aiohttp.ClientSession()
-
-    async def request(self, message, payload):
-        return await self.client.request(
-            method=message.method,
-            url=self.make_url(message.path))
+        self.client_session = client_session
 
     def make_url(self, path):
         return urljoin(self.base_url, path)
 
-
-class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
-    def __init__(self, requester, *args, **kw):
-        super().__init__(*args, **kw)
-        self.requester = requester
-
     async def handle_request(self, message, payload):
-        client_response = await self.requester.request(message, payload)
+        data = await payload.read()
+        client_response = await self.client_session.request(
+            method=message.method,
+            url=self.make_url(message.path),
+            headers=message.headers,
+            data=data,
+            allow_redirects=False)
         response = aiohttp.Response(
             self.writer, client_response.status)
         response.add_headers(*client_response.headers.items())
@@ -38,9 +34,9 @@ class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
 
 def main():
     loop = asyncio.get_event_loop()
-    requester = ProxyRequester('http://localhost:8000')
+    client_session = aiohttp.ClientSession()
     f = loop.create_server(
-        partial(ProxyRequestHandler, requester, debug="True"),
+        partial(ProxyRequestHandler, 'http://localhost:5000', client_session),
         '0.0.0.0', '7000')
     srv = loop.run_until_complete(f)
     print("serving on", srv.sockets[0].getsockname())

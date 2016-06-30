@@ -29,7 +29,9 @@ class MockClientSession:
         if url == 'http://localhost/':
             return MockClientGetResponse(self.loop)
         elif url == 'http://localhost/post':
-            return MockClientPostResponse(self.loop, data)
+            response = MockClientPostResponse(self.loop, data)
+            await response.feed()
+            return response
 
 
 class MockClientGetResponse:
@@ -49,7 +51,14 @@ class MockClientPostResponse:
         self.status = '200'
         self.headers = {}
         self.content = StreamReader(loop=loop)
-        self.content.feed_data(b'got: ' + data)
+        self.data = data
+        # self.content.feed_data(b'got: ')
+        # self.content.feed_data(data)
+        # self.content.feed_eof()
+
+    async def feed(self):
+        self.content.feed_data(b'got: ')
+        self.content.feed_data(await self.data)
         self.content.feed_eof()
 
     def close(self):

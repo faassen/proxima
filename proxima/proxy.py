@@ -15,12 +15,11 @@ class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
         return urljoin(self.base_url, path)
 
     async def handle_request(self, message, payload):
-        data = await payload.read()
         client_response = await self.client_session.request(
             method=message.method,
             url=self.make_url(message.path),
             headers=message.headers,
-            data=data,
+            data=payload.read(),
             allow_redirects=False)
         response = aiohttp.Response(
             self.writer, client_response.status)

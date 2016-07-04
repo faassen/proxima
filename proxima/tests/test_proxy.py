@@ -11,6 +11,7 @@ from unittest import mock
 class MockClientSession:
     def __init__(self, loop):
         self.loop = loop
+        self.forwarded = None
 
     async def request(self, method, url, *,
                 params=None,
@@ -26,6 +27,7 @@ class MockClientSession:
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
+        self.forwarded = headers.get('forwarded')
         if url == 'http://localhost/':
             return MockClientGetResponse(self.loop)
         elif url == 'http://localhost/post':
@@ -72,8 +74,12 @@ def loop():
 
 
 @pytest.fixture
-def handler(loop):
-    client_session = MockClientSession(loop)
+def client_session(loop):
+    return MockClientSession(loop)
+
+
+@pytest.fixture
+def handler(loop, client_session):
     return ProxyRequestHandler('http://localhost',
                                client_session, loop=loop)
 
@@ -106,6 +112,12 @@ async def test_proxy_post(test_client):
     text = await resp.text()
     assert text == 'got: DATA'
 
+
+@asyncio
+async def test_proxy_forwarded(test_client):
+    resp = await test_client.get('/', headers={'host': 'localhost'})
+    assert (test_client.handler.client_session.forwarded ==
+            'host=localhost;proto=http')
 
 # test when server errors
 

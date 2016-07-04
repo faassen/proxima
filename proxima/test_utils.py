@@ -18,6 +18,10 @@ class TestClient(BaseTestClient):
         )
         self._closed = False
 
+    @property
+    def handler(self):
+        return self._handler
+
     def close(self):
         if not self._closed:
             loop = self._loop

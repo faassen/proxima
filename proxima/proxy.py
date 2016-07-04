@@ -2,6 +2,7 @@ import aiohttp
 import aiohttp.server
 from urllib.parse import urljoin
 import asyncio
+from aiohttp.web_reqrep import Request
 from functools import partial
 
 
@@ -14,11 +15,19 @@ class ProxyRequestHandler(aiohttp.server.ServerHttpProtocol):
     def make_url(self, path):
         return urljoin(self.base_url, path)
 
+
     async def handle_request(self, message, payload):
+        # XXX what is secure_proxy_ssl_header all about?
+        request = Request(None, message, payload, self.transport,
+                          self.reader, self.writer)
+        headers = message.headers
+        if request.host:
+            headers.add('Forwarded', 'host=%s;proto=%s' % (
+                request.host, request.scheme))
         client_response = await self.client_session.request(
             method=message.method,
             url=self.make_url(message.path),
-            headers=message.headers,
+            headers=headers,
             data=payload.read(),
             version=message.version,
             allow_redirects=False)

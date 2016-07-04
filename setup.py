@@ -36,7 +36,6 @@ setup(
     extras_require=dict(
         test=[
             'pytest >= 2.5.2',
-            'pytest-asyncio',
             'py >= 1.4.20',
             'pytest-cov',
             'pytest-remove-stale-bytecode',

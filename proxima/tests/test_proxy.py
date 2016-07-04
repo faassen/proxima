@@ -6,7 +6,9 @@ from proxima.test_utils import TestClient
 from aiohttp import web
 import aiohttp
 from aiohttp import HttpVersion11, StreamReader
+from multidict import CIMultiDict
 from unittest import mock
+
 
 class MockClientSession:
     def __init__(self, loop):
@@ -34,6 +36,12 @@ class MockClientSession:
             response = MockClientPostResponse(self.loop, data)
             await response.feed()
             return response
+        elif url == 'http://localhost/error':
+            return MockClientErrorResponse(self.loop)
+        elif url == 'http://localhost/redirect':
+            return MockClientRedirectResponse(self.loop)
+        else:
+            assert False, "Should not reach"
 
 
 class MockClientGetResponse:
@@ -42,6 +50,30 @@ class MockClientGetResponse:
         self.headers = {}
         self.content = StreamReader(loop=loop)
         self.content.feed_data(b'blah')
+        self.content.feed_eof()
+
+    def close(self):
+        pass
+
+
+class MockClientErrorResponse:
+    def __init__(self, loop):
+        self.status = '500'
+        self.headers = {}
+        self.content = StreamReader(loop=loop)
+        self.content.feed_data(b'blah')
+        self.content.feed_eof()
+
+    def close(self):
+        pass
+
+
+class MockClientRedirectResponse:
+    def __init__(self, loop):
+        self.status = '302'
+        self.headers = CIMultiDict({'location': '/somewhere_else'})
+        self.content = StreamReader(loop=loop)
+        self.content.feed_data(b'')
         self.content.feed_eof()
 
     def close(self):
@@ -119,11 +151,18 @@ async def test_proxy_forwarded(test_client):
     assert (test_client.handler.client_session.forwarded ==
             'host=localhost;proto=http')
 
-# test when server errors
 
-# test when server redirects
+@asyncio
+async def test_proxy_backend_errors(test_client):
+    resp = await test_client.get('/error')
+    assert resp.status == 500
 
-# Forwarded header
+
+@asyncio
+async def test_proxy_redirect(test_client):
+    resp = await test_client.get('/redirect', allow_redirects=False)
+    assert resp.status == 302
+    assert resp.headers['location'] == '/somewhere_else'
 
 # encoding, how does it work? I think it is used to encode the
 # data if it's a string, but ours is an IOBase I suspect
